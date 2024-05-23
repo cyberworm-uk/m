@@ -8,9 +8,10 @@ import (
 	"image/color/palette"
 	"image/gif"
 	"log"
-	"m"
 	"math"
 	"os"
+
+	"github.com/cyberworm-uk/m"
 )
 
 func generate(width, height, limit int, xstart, xend, ystart, yend float64) *image.Paletted {
