@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"image"
 	"image/color"
-	"image/color/palette"
 	"image/gif"
 	"log"
 	"math"
@@ -14,17 +13,30 @@ import (
 	"github.com/cyberworm-uk/m"
 )
 
+func myPaletted(r image.Rectangle) *image.Paletted {
+	img := image.NewPaletted(r, myPalette)
+	for x := r.Min.X; x < r.Max.X; x++ {
+		for y := r.Min.Y; y < r.Max.Y; y++ {
+			img.Set(x, y, myPalette[0])
+		}
+	}
+	return img
+}
+
 func generate(width, height, limit int, xstart, xend, ystart, yend float64) *image.Paletted {
-	var raw = image.NewPaletted(image.Rectangle{image.Point{0, 0}, image.Point{width, height}}, palette.WebSafe)
+	var raw = myPaletted(image.Rectangle{image.Point{0, 0}, image.Point{width, height}})
+	var scale = float64(width) / (xend - xstart)
 	for y := 0; y < height; y++ {
 		for x := 0; x < width; x++ {
 			// map co-ordinates to complex plane
-			var real = (xstart + float64(x)/float64(width)*(xend-xstart))
-			var imag = (ystart + float64(y)/float64(height)*(yend-ystart))
+			var real = xstart + float64(x)/scale
+			var imag = ystart + float64(y)/scale
 			// convert to a complex number and determine if it's bounded within our limits
 			var m = m.M(complex(real, imag), limit) * 255 / limit
 			// set the co-ordinate value in our RGBA
-			raw.Set(x, y, color.RGBA{255 - uint8(m), 255 - uint8(m), 255 - uint8(m), uint8(m)})
+			if m > 128 {
+				raw.Set(x, y, color.RGBA{255 - uint8(m), 255 - uint8(m), 255 - uint8(m), uint8(m) / 10})
+			}
 		}
 	}
 	return raw
@@ -35,11 +47,13 @@ func resolve(width, height, frames, limit int, xstart, xend, ystart, yend float6
 		Image:     []*image.Paletted{},
 		Delay:     []int{},
 		LoopCount: 0,
+		Disposal:  []byte{},
 	}
 	for i := 1; i <= frames; i++ {
 		log.Printf("%v of %v, l=%v\n", i, frames, limit)
 		g.Image = append(g.Image, generate(width, height, i*limit/frames, xstart, xend, ystart, yend))
 		g.Delay = append(g.Delay, 20)
+		g.Disposal = append(g.Disposal, gif.DisposalBackground)
 	}
 	return g
 }
@@ -49,13 +63,15 @@ func zoom(width, height, frames, limit int, xstart, xend, ystart, yend float64) 
 		Image:     []*image.Paletted{},
 		Delay:     []int{},
 		LoopCount: 0,
+		Disposal:  []byte{},
 	}
 	for i := 1; i <= frames; i++ {
 		log.Printf("%v of %v, x=%v->%v, y=%v->%v\n", i, frames, xstart, xend, ystart, yend)
-		g.Image = append(g.Image, generate(width, height, limit, xstart, xend, ystart, yend))
+		g.Image = append(g.Image, generate(width, height, limit+(i*limit/frames), xstart, xend, ystart, yend))
 		g.Delay = append(g.Delay, 10)
-		var xdelta = math.Abs(xstart-xend) / 12
-		var ydelta = math.Abs(ystart-yend) / 12
+		g.Disposal = append(g.Disposal, gif.DisposalBackground)
+		var xdelta = math.Abs(xstart-xend) * 0.05
+		var ydelta = math.Abs(ystart-yend) * 0.05
 		ystart += ydelta
 		yend -= ydelta
 		xstart += xdelta
