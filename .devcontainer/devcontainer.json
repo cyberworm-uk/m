@@ -1,0 +1,20 @@
+{
+	"name": "Go",
+//	"build": { "dockerfile": "Dockerfile" },
+	"image": "mcr.microsoft.com/devcontainers/go:1.23",
+	"runArgs": [
+		"--userns=keep-id",
+		"--security-opt=label=disable"
+	],
+	"containerEnv": {
+		"HOME": "/home/vscode"
+	},
+	"remoteUser": "vscode",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"golang.go"
+			]
+		}
+	}
+}
